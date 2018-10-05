@@ -1,0 +1,250 @@
+from pulp import *
+from pandas import DataFrame, read_csv
+import matplotlib.pyplot as plt
+import pandas as pd 
+
+diet = pd.read_excel( \
+    '/Users/katrinagreen/Documents/Georgia Tech/ISYE6501/DataSets/DietSummer2018.xls')
+food = diet[0:64]
+food = food.values.tolist()
+for i in range(0,64):
+print(food[i])
+
+food_lc = [x[0] for x in food] #list of food names
+
+cals = dict([(x[0], float(x[3])) for x in food]) #calories
+choles = dict([(x[0], float(x[4])) for x in food]) #cholestorol
+totalFat = dict([(x[0], float(x[5])) for x in food]) #total fat
+sodium = dict([(x[0], float(x[6])) for x in food]) #sodium
+carbs = dict([(x[0], float(x[7])) for x in food]) #carbs
+dfiber = dict([(x[0], float(x[8])) for x in food]) #dietfiber
+protein = dict([(x[0], float(x[9])) for x in food]) #protein
+VitA = dict([(x[0], float(x[10])) for x in food]) #VitA
+VitC = dict([(x[0], float(x[11])) for x in food]) #VitC
+calcium = dict([(x[0], float(x[12])) for x in food]) #Calcium
+iron = dict([(x[0], float(x[13])) for x in food]) #Iron
+
+cals_v1 = [float(x[3]) for x in food]
+totalFat_v2 = [float(x[5]) for x in food]
+
+length = [x[0] for x in food]
+
+amin = [1500, 30, 20, 800, 130, 125, 60, 1000, 400, 700, 10]
+amax = [2400, 240, 70, 2000, 450, 250, 100, 10000, 5000, 1500, 40]
+
+B = []
+for j in range(0,11):
+    nt = dict([(x[0], float(x[j+3])) for x in food])
+    B.append(nt)
+    
+    cost = dict([(x[0], float(x[1])) for x in food])
+    
+#Optimization Problem - Minimization problem
+problem1 = LpProblem('Nutrition', LpMinimize)
+
+#Define Variables
+foodvars = LpVariable.dicts("Foods", food_lc, 0)
+chfood = LpVariable.dicts("Chosen", food_lc, 0, 1, 'Binary')
+
+x = []
+for i in range(0, len(food_lc)):
+    x.append(LpVariable(food_lc[i],0))
+    
+#Created Obj Function
+problem1 += lpSum([cost[f] * foodvars[f] for f in food_lc])
+
+#Add constraints for each nutrient
+#\ line breaks in code for clean pdf
+
+problem1 += lpSum(\
+    [cals[f] * foodvars[f] for f in food_lc]) >= 1500, 'min calories'
+problem1 += lpSum(\
+    [cals[f] * foodvars[f] for f in food_lc]) <= 2500, 'max calories'
+
+problem1 += lpSum(\
+    [totalFat[f] * foodvars[f] for f in food_lc]) >= 20, 'min fat'
+problem1 += lpSum(\
+    [totalFat[f] * foodvars[f] for f in food_lc]) <= 70, 'max fat'
+
+problem1 += lpSum(\
+    [sodium[f] * foodvars[f] for f in food_lc]) >= 800, 'min sodium'
+problem1 += lpSum(\
+    [sodium[f] * foodvars[f] for f in food_lc]) <= 2000, 'max sodium'
+
+problem1 += lpSum(\
+    [choles[f] * foodvars[f] for f in food_lc]) >= 30, 'min cholest'
+problem1 += lpSum(\
+    [choles[f] * foodvars[f] for f in food_lc]) <= 240, 'max cholest'
+
+problem1 += lpSum(\
+    [carbs[f] * foodvars[f] for f in food_lc]) >= 130, 'min carbs'
+problem1 += lpSum(\
+    [carbs[f] * foodvars[f] for f in food_lc]) <= 450, 'max carbs'
+
+problem1 += lpSum(\
+    [dfiber[f] * foodvars[f] for f in food_lc]) >= 125, 'min diet fiber'
+problem1 += lpSum(\
+    [dfiber[f] * foodvars[f] for f in food_lc]) <= 250, 'max diet fiber'
+
+problem1 += lpSum(\
+    [protein[f] * foodvars[f] for f in food_lc]) >= 60, 'min protein'
+problem1 += lpSum(\
+    [protein[f] * foodvars[f] for f in food_lc]) <= 100, 'max protein'
+
+problem1 += lpSum(\
+    [VitA[f] * foodvars[f] for f in food_lc]) >= 1000, 'min Vit A'
+problem1 += lpSum(\
+    [VitA[f] * foodvars[f] for f in food_lc]) <= 10000, 'max Vit A'
+
+problem1 += lpSum(\
+    [VitC[f] * foodvars[f] for f in food_lc]) >= 400, 'min Vit C'
+problem1 += lpSum(\
+    [VitC[f] * foodvars[f] for f in food_lc]) <= 5000, 'max Vit C'
+
+problem1 += lpSum(\
+    [calcium[f] * foodvars[f] for f in food_lc]) >= 700, 'min calcium'
+problem1 += lpSum(\
+    [calcium[f] * foodvars[f] for f in food_lc]) <= 1500, 'max calcium'
+
+problem1 += lpSum(\
+    [iron[f] * foodvars[f] for f in food_lc]) >= 10, 'min iron'
+problem1 += lpSum(\
+    [iron[f] * foodvars[f] for f in food_lc]) <= 40, 'max iron'
+    
+for i in range(0,11):
+    dot_B_x = pulp.lpSum([B[i][j] * foodvars[j] for j in food_lc])
+    condition = amin[i] <= + dot_B_x
+    problem1 += condition
+    
+    dot_B_x = pulp.lpSum([B[i][j] * foodvars[j] for j in food_lc])
+    condition = amax[i] >= + dot_B_x
+    problem1 += condition
+
+problem1.solve()
+
+print(problem1.variables())
+print("---Solution to this Diet Prob is---")
+for var in problem1.variables():
+    if var.varValue > 0:
+        if str(var).find('Chosen'):
+            print(str(var.varValue)+" units of "+str(var))
+print("Total cost of food = $%.2f" %  value(problem1.objective))
+
+
+
+C = []
+for j in range(0,11):
+    nt2 = dict([(x[0], float(x[j+3])) for x in food])
+    C.append(nt2)
+    
+#Modifying the problem with different restraints. 
+problem2 = LpProblem('Nutrition_15.2.2', LpMinimize)
+
+#Define Variables
+food_v2 = LpVariable.dicts("Foods", food_lc, 0)
+chfood_v2 = LpVariable.dicts("Chosen", food_lc, 0, 1, 'Binary')
+
+x_2 = []
+for i in range(0, len(food_lc)):
+    x_2.append(LpVariable(food_lc[i],0))
+
+#Created Obj Function
+problem2 += lpSum([cost[f] * food_v2[f] for f in food_lc])
+
+#Add constraints for each nutrient
+#\ line breaks in code for clean pdf
+#Original Constraints for first model
+problem2 += lpSum(\
+    [cals[f] * food_v2[f] for f in food_lc]) >= 1500, 'min calories'
+problem2 += lpSum(\
+    [cals[f] * food_v2[f] for f in food_lc]) <= 2500, 'max calories'
+
+problem2 += lpSum(\
+    [totalFat[f] * food_v2[f] for f in food_lc]) >= 20, 'min fat'
+problem2 += lpSum(\
+    [totalFat[f] * food_v2[f] for f in food_lc]) <= 70, 'max fat'
+
+problem2 += lpSum(\
+    [sodium[f] * food_v2[f] for f in food_lc]) >= 800, 'min sodium'
+problem2 += lpSum(\
+    [sodium[f] * food_v2[f] for f in food_lc]) <= 2000, 'max sodium'
+
+problem2 += lpSum(\
+    [choles[f] * food_v2[f] for f in food_lc]) >= 30, 'min cholest'
+problem2 += lpSum(\
+    [choles[f] * food_v2[f] for f in food_lc]) <= 240, 'max cholest'
+
+problem2 += lpSum(\
+    [carbs[f] * food_v2[f] for f in food_lc]) >= 130, 'min carbs'
+problem2 += lpSum(\
+    [carbs[f] * food_v2[f] for f in food_lc]) <= 450, 'max carbs'
+
+problem2 += lpSum(\
+    [dfiber[f] * food_v2[f] for f in food_lc]) >= 125, 'min diet fiber'
+problem2 += lpSum(\
+    [dfiber[f] * food_v2[f] for f in food_lc]) <= 250, 'max diet fiber'
+
+problem2 += lpSum(\
+    [protein[f] * food_v2[f] for f in food_lc]) >= 60, 'min protein'
+problem2 += lpSum(\
+    [protein[f] * food_v2[f] for f in food_lc]) <= 100, 'max protein'
+
+problem2 += lpSum(\
+    [VitA[f] * food_v2[f] for f in food_lc]) >= 1000, 'min Vit A'
+problem2 += lpSum(\
+    [VitA[f] * food_v2[f] for f in food_lc]) <= 10000, 'max Vit A'
+
+problem2 += lpSum(\
+    [VitC[f] * food_v2[f] for f in food_lc]) >= 400, 'min Vit C'
+problem2 += lpSum(\
+    [VitC[f] * food_v2[f] for f in food_lc]) <= 5000, 'max Vit C'
+
+problem2 += lpSum(\
+    [calcium[f] * food_v2[f] for f in food_lc]) >= 700, 'min calcium'
+problem2 += lpSum(\
+    [calcium[f] * food_v2[f] for f in food_lc]) <= 1500, 'max calcium'
+
+problem2 += lpSum(\
+    [iron[f] * food_v2[f] for f in food_lc]) >= 10, 'min iron'
+problem2 += lpSum(\
+    [iron[f] * food_v2[f] for f in food_lc]) <= 40, 'max iron'
+
+#contstraint for 15.2a
+for f in food_lc:
+    problem2 += 0.1*chfood_v2[f] <= food_v2[f]
+    problem2 += 100000*chfood_v2[f] >= food_v2[f]
+
+#constraint for 15.2b
+problem2 += chfood_v2['Celery, Raw'] + chfood_v2['Frozen Broccoli'] <=1
+
+#constraint for 15.2c
+problem2 += chfood_v2['Tofu'] + chfood_v2['Roasted Chicken'] \
++ chfood_v2['Poached Eggs'] + chfood_v2['Scrambled Eggs'] \
++ chfood_v2['Bologna,Turkey'] + chfood_v2['Frankfurter, Beef'] \
++ chfood_v2['Ham,Sliced,Extralean'] + chfood_v2['Kielbasa,Prk'] \
++ chfood_v2['Pizza W/Pepperoni'] + chfood_v2['Taco'] \
++ chfood_v2['Hamburger W/Toppings'] + chfood_v2['Hotdog, Plain'] \
++ chfood_v2['Pork'] + chfood_v2['Sardines in Oil'] \
++ chfood_v2['White Tuna in Water'] + chfood_v2['Chicknoodl Soup'] \
++ chfood_v2['Splt Pea&Hamsoup'] + chfood_v2['Vegetbeef Soup'] \
++ chfood_v2['Neweng Clamchwd'] + chfood_v2['New E Clamchwd,W/Mlk'] \
++ chfood_v2['Beanbacn Soup,W/Watr'] >= 3
+
+for i in range(0,11):
+    dot_C_x = pulp.lpSum([C[i][j] * food_v2[j] for j in food_lc])
+    condition = amin[i] <= + dot_C_x
+    problem2 += condition
+    
+    dot_C_x = pulp.lpSum([C[i][j] * food_v2[j] for j in food_lc])
+    condition = amax[i] >= + dot_C_x
+    problem2 += condition
+    
+problem2.solve()
+
+print(problem2.variables())
+print("---Solution to this Diet Prob for part 2 is---")
+for var in problem2.variables():
+    if var.varValue > 0:
+        if str(var).find('Chosen'):
+            print(str(var.varValue)+" units of "+str(var))
+print("Total cost of food = $%.2f" %  value(problem2.objective))
